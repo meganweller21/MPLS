@@ -17,6 +17,8 @@ class Interface:
         self.cost = cost
         self.capacity = capacity #serialization rate
         self.next_avail_time = 0 #the next time the interface can transmit a packet
+        self.p1size = 0
+        self.p0size = 0
     
     ##get packet from the queue interface
     # @param in_or_out - use 'in' or 'out' interface
@@ -26,8 +28,7 @@ class Interface:
                 pkt_S = self.in_queue.get(False)
                 prior = pkt_S[0]
                 pkt = pkt_S[1]
-                #print("pr", prior)
-                #print("p", pkt)
+
 #                 if pkt_S is not None:
 #                     print('getting packet from the IN queue')
                 return (prior, pkt)
@@ -35,8 +36,11 @@ class Interface:
                 pkt_S = self.out_queue.get(False)
                 prior = pkt_S[0]
                 pkt = pkt_S[1]
-                #print("pr", prior)
-                #print("p", pkt)
+
+                if int(prior) == 0:
+                    self.p0size -= 1
+                else:
+                    self.p1size -= 1
 #                 if pkt_S is not None:
 #                     print('getting packet from the OUT queue')
                 return (prior, pkt)
@@ -51,8 +55,14 @@ class Interface:
     def put(self, priority, pkt, in_or_out, block=False):
         if in_or_out == 'out':
 #             print('putting packet in the OUT queue')
+            if priority == 0:
+                self.p0size += 1
+            else:
+                self.p1size += 1
+
             self.out_queue.put((-priority, pkt, block))
         else:
+           
 #             print('putting packet in the IN queue')
             self.in_queue.put((-priority, pkt, block))
             
