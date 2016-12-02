@@ -51,10 +51,10 @@ class Interface:
     def put(self, priority, pkt, in_or_out, block=False):
         if in_or_out == 'out':
 #             print('putting packet in the OUT queue')
-            self.out_queue.put((priority, pkt, block))
+            self.out_queue.put((-priority, pkt, block))
         else:
 #             print('putting packet in the IN queue')
-            self.in_queue.put((priority, pkt, block))
+            self.in_queue.put((-priority, pkt, block))
             
         
 ## Implements a network layer packet (different from the RDT packet 
@@ -70,7 +70,7 @@ class NetworkPacket:
     ##@param dst_addr: address of the destination host
     # @param data_S: packet payload
     # @param prot_S: upper layer protocol for the packet (data, or control)
-    def __init__(self, dst_addr, prot_S, data_S, priority):
+    def __init__(self, dst_addr, prot_S, priority, data_S):
         self.dst_addr = dst_addr
         self.data_S = data_S
         self.prot_S = prot_S
@@ -131,7 +131,7 @@ class Host:
     # @param priority: packet priority
     def udt_send(self, dst_addr, data_S, priority=0):
 
-        p = NetworkPacket(dst_addr, 'data', data_S, priority)
+        p = NetworkPacket(dst_addr, 'data', priority, data_S)
         print('%s: sending packet "%s"' % (self, p))
         self.intf_L[0].put(priority, p.to_byte_S(), 'out') #send packets always enqueued successfully
         
