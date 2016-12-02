@@ -38,9 +38,9 @@ class Link:
                 #check if the interface is free to transmit a packet
                 if intf_a.next_avail_time <= time.time():
                     #transmit the packet
-                    pkt_S = intf_a.get('out')
-                    intf_b.put(pkt_S, 'in')
-                    #update the next free time of the inteface according to serialization delay
+                    priority, pkt_S = intf_a.get('out')
+                    intf_b.put(priority, pkt_S, 'in')
+                    #update the next free time of the interface according to serialization delay
                     pkt_size = len(pkt_S)*8 #assuming each characted is 8 bits
                     intf_a.next_avail_time = time.time() + pkt_size/intf_a.capacity                
                     print('%s: transmitting packet "%s" on %s %s -> %s, %s \n' \
