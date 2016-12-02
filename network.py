@@ -30,7 +30,7 @@ class Interface:
                 #print("p", pkt)
 #                 if pkt_S is not None:
 #                     print('getting packet from the IN queue')
-                return prior, pkt
+                return (prior, pkt)
             else:
                 pkt_S = self.out_queue.get(False)
                 prior = pkt_S[0]
@@ -39,8 +39,9 @@ class Interface:
                 #print("p", pkt)
 #                 if pkt_S is not None:
 #                     print('getting packet from the OUT queue')
-                return prior, pkt
+                return (prior, pkt)
         except queue.Empty:
+            #print("I am none")
             return None
         
     ##put the packet into the interface queue
@@ -104,7 +105,7 @@ class NetworkPacket:
             prot_S = 'control'
         else:
             raise('%s: unknown prot_S field: %s' %(self, prot_S))
-        priority_s = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length : NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length]    
+        priority_S = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length : NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length]    
         data_S = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length : ]        
         return self(dst_addr, prot_S, priority_S, data_S)
     
@@ -136,9 +137,10 @@ class Host:
         
     ## receive packet from the network layer
     def udt_receive(self):
-        priority, pkt_S = self.intf_L[0].get('in')
+        pkt_S = self.intf_L[0].get('in')
         if pkt_S is not None:
-            print('%s: received packet "%s"' % (self, pkt_S))
+            pkt = pkt_S[1]
+            print('%s: received packet "%s"' % (self, pkt))
        
     ## thread target for the host to keep receiving data
     def run(self):
@@ -183,12 +185,15 @@ class Router:
         for i in range(len(self.intf_L)):
             pkt_S = None
             #get packet from interface i
-            priority, pkt_S = self.intf_L[i].get('in')
+            pkt_S = self.intf_L[i].get('in')
             #if packet exists make a forwarding decision
             if pkt_S is not None:
-                p = NetworkPacket.from_byte_S(pkt_S) #parse a packet out
+
+                prior = pkt_S[0]
+                pkt = pkt_S[1]
+                p = NetworkPacket.from_byte_S(pkt) #parse a packet out
                 if p.prot_S == 'data':
-                    self.forward_packet(p,i)
+                    self.forward_packet(prior, p,i)
                 elif p.prot_S == 'control':
                     self.update_routes(p, i)
                 else:
@@ -197,12 +202,12 @@ class Router:
     ## forward the packet according to the routing table
     #  @param p Packet to forward
     #  @param i Incoming interface number for packet p
-    def forward_packet(self, p, i):
+    def forward_packet(self, prior, p, i):
         try:
             # TODO: Here you will need to implement a lookup into the 
             # forwarding table to find the appropriate outgoing interface
             # for now we assume the outgoing interface is (i+1)%2
-            self.intf_L[(i+1)%2].put(p.to_byte_S(), 'out', True)
+            self.intf_L[(i+1)%2].put(prior, p.to_byte_S(), 'out', True)
             print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, (i+1)%2))
         except queue.Full:
             print('%s: packet "%s" lost on interface %d' % (self, p, i))
