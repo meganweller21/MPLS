@@ -119,6 +119,53 @@ class NetworkPacket:
         data_S = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length : ]        
         return self(dst_addr, prot_S, priority_S, data_S)
     
+class MPLS_frame(NetworkPacket):
+
+    label_S_length = 20
+
+    def __init__(self, label, dst_addr, prot_S, priority, data_S):
+        self.label = label
+        self.dst_addr = dst_addr
+        self.data_S = data_S
+        self.prot_S = prot_S
+        self.priority = priority
+
+    # called when printing the object
+    def __str__(self):
+        return self.to_byte_S()
+        
+    ## convert packet to a byte string for transmission over links
+    def to_byte_S(self):
+        byte_S = str(self.label).zfill(self.label_S_length)
+        byte_S += str(self.dst_addr).zfill(self.dst_addr_S_length)
+        if self.prot_S == 'data':
+            byte_S += '1'
+        elif self.prot_S == 'control':
+            byte_S += '2'
+        else:
+            raise('%s: unknown prot_S option: %s' %(self, self.prot_S))
+        byte_S += str(self.priority)
+        byte_S += self.data_S
+        return byte_S
+    
+    ## extract a packet object from a byte string
+    # @param byte_S: byte string representation of the packet
+    @classmethod
+    def from_byte_S(self, byte_S):
+        label_S = int(byte_S[0 : MPLS_frame.label_S_length])
+        dst_addr = int(byte_S[MPLS_frame.label_S_length : NetworkPacket.dst_addr_S_length])
+        prot_S = byte_S[MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length : MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length]
+        if prot_S == '1':
+            prot_S = 'data'
+        elif prot_S == '2':
+            prot_S = 'control'
+        else:
+            raise('%s: unknown prot_S field: %s' %(self, prot_S))
+        priority_S = byte_S[MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length : MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length]    
+        data_S = byte_S[MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length : ]        
+        return self(label, dst_addr, prot_S, priority_S, data_S)    
+
+
 
     
 
@@ -173,7 +220,8 @@ class Router:
     # @param intf_capacity_L: capacities of outgoing interfaces in bps 
     # @param rt_tbl_D: routing table dictionary (starting reachability), eg. {1: {1: 1}} # packet to host 1 through interface 1 for cost 1
     # @param max_queue_size: max queue length (passed to Interface)
-    def __init__(self, name, intf_cost_L, intf_capacity_L, rt_tbl_D, max_queue_size):
+    # @param forwarding: forwarding table for MPLS
+    def __init__(self, name, intf_cost_L, intf_capacity_L, rt_tbl_D, max_queue_size, forwarding):
         self.stop = False #for thread termination
         self.name = name
         #create a list of interfaces
@@ -184,6 +232,7 @@ class Router:
             self.intf_L.append(Interface(intf_cost_L[i], max_queue_size, intf_capacity_L[i]))
         #set up the routing table for connected hosts
         self.rt_tbl_D = rt_tbl_D 
+        self.forwarding = forwarding
 
     ## called when printing the object
     def __str__(self):
