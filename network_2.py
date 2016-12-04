@@ -76,6 +76,7 @@ class NetworkPacket:
     dst_addr_S_length = 5
     prot_S_length = 1
     pror_S_length = 1
+    full_length = 7
     
     ##@param dst_addr: address of the destination host
     # @param data_S: packet payload
@@ -122,7 +123,7 @@ class NetworkPacket:
 class MPLS_frame(NetworkPacket):
 
     label_S_length = 20
-
+    full_length = 27
     def __init__(self, label, dst_addr, prot_S, priority, data_S):
         self.label = label
         self.dst_addr = dst_addr
@@ -165,9 +166,6 @@ class MPLS_frame(NetworkPacket):
         data_S = byte_S[MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length : ]        
         return self(label, dst_addr, prot_S, priority_S, data_S)    
 
-
-
-    
 
 ## Implements a network host for receiving and transmitting data
 class Host:
@@ -221,7 +219,7 @@ class Router:
     # @param rt_tbl_D: routing table dictionary (starting reachability), eg. {1: {1: 1}} # packet to host 1 through interface 1 for cost 1
     # @param max_queue_size: max queue length (passed to Interface)
     # @param forwarding: forwarding table for MPLS
-    def __init__(self, name, intf_cost_L, intf_capacity_L, rt_tbl_D, max_queue_size, forwarding):
+    def __init__(self, name, intf_cost_L, intf_capacity_L, rt_tbl_D, max_queue_size, forwarding_table):
         self.stop = False #for thread termination
         self.name = name
         #create a list of interfaces
@@ -232,7 +230,7 @@ class Router:
             self.intf_L.append(Interface(intf_cost_L[i], max_queue_size, intf_capacity_L[i]))
         #set up the routing table for connected hosts
         self.rt_tbl_D = rt_tbl_D 
-        self.forwarding = forwarding
+        self.forwarding_table = forwarding_table
 
     ## called when printing the object
     def __str__(self):
@@ -247,10 +245,12 @@ class Router:
             pkt_S = self.intf_L[i].get('in')
             #if packet exists make a forwarding decision
             if pkt_S is not None:
-
                 prior = pkt_S[0]
                 pkt = pkt_S[1]
-                p = NetworkPacket.from_byte_S(pkt) #parse a packet out
+                if len(pkt_S) > 30:
+                    p = MPLS_frame.from_byte_S(pkt)
+                else:
+                    p = NetworkPacket.from_byte_S(pkt) #parse a packet out
                 if p.prot_S == 'data':
                     self.forward_packet(prior, p,i)
                 elif p.prot_S == 'control':

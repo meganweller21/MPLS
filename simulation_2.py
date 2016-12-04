@@ -37,7 +37,7 @@ if __name__ == '__main__':
     router_a_rt_tbl_D = {1: {0: 1}, 2: {1: 9}}
     router_a = network_2.Router(name='A', 
                               intf_cost_L=[1,9,1,2],
-                              intf_capacity_L=[500,500],
+                              intf_capacity_L=[500,500,500,500],
                               rt_tbl_D = router_a_rt_tbl_D, 
                               max_queue_size=router_queue_size,
                               forwarding_table = forwarding_table)
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     router_d = network_2.Router(name='D', 
                               intf_cost_L=[2,1,3], 
                               rt_tbl_D = router_d_rt_tbl_D, 
-                              intf_capacity_L=[500,300], #I made this up
+                              intf_capacity_L=[500,300,500], #I made this up
                               max_queue_size=router_queue_size,
                               forwarding_table = forwarding_table)
     object_L.append(router_d)
