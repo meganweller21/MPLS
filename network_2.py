@@ -129,6 +129,7 @@ class MPLS_frame(NetworkPacket):
     def __init__(self, label, pkt):
         self.label = label
         self.pkt = pkt
+        self.prot_S = pkt.prot_S
 
     # called when printing the object
     def __str__(self):
@@ -137,8 +138,11 @@ class MPLS_frame(NetworkPacket):
     ## convert packet to a byte string for transmission over links
     def to_byte_S(self):
         byte_S = str(self.label).zfill(self.label_S_length)
-        byte_S += NetworkPacket.from_byte_S()
+        byte_S += self.pkt.to_byte_S()
         return byte_S
+
+    def return_packet(self):
+        return self.pkt
     
     ## extract a packet object from a byte string
     # @param byte_S: byte string representation of the packet
@@ -146,7 +150,7 @@ class MPLS_frame(NetworkPacket):
     def from_byte_S(self, byte_S):
         label_S = int(byte_S[0 : MPLS_frame.label_S_length])
         data_S = NetworkPacket.from_byte_S(byte_S[MPLS_frame.label_S_length : ])    
-        return self(label, data_S)    
+        return self(label_S, data_S)    
 
 
 ## Implements a network host for receiving and transmitting data
@@ -228,7 +232,7 @@ class Router:
             if pkt_S is not None:
                 prior = pkt_S[0]
                 pkt = pkt_S[1]
-                if len(pkt_S) > 30:
+                if len(pkt) > 30:
                     p = MPLS_frame.from_byte_S(pkt)
                 else:
                     p = NetworkPacket.from_byte_S(pkt) #parse a packet out
@@ -247,26 +251,36 @@ class Router:
             # TODO: Here you will need to implement a lookup into the 
             # forwarding table to find the appropriate outgoing interface
             # for now we assume the outgoing interface is (i+1)%2
-            source_host = p.data_S[11]
+            if (len(p.to_byte_S()) > 30):
+                pk = p.return_packet()
+                source_host = pk.data_S[11]
+            else:
+                source_host = p.data_S[11]
+
             if (self.name == "A"):
                 #coming from Host 1
                 if (source_host == "1"):
+                    pkt = MPLS_frame(self.forwarding_table[0][0], p)
                     interface = self.forwarding_table[0][3]
                 #coming from Host 2
                 elif (source_host == "2"):
+                    pkt = MPLS_frame(self.forwarding_table[2][0], p)
                     interface = self.forwarding_table[2][3]
             elif (self.name == "B"):
+                pkt = MPLS_frame(self.forwarding_table[1][0], p.return_packet())
                 interface = self.forwarding_table[1][3]
             elif (self.name == "C"):
+                pkt = MPLS_frame(self.forwarding_table[3][0], p.return_packet())
                 interface = self.forwarding_table[3][3]
             elif (self.name == "D"):
+                pkt = p.return_packet()
                 interface = 2
-                
-
-            self.intf_L[interface].put(prior, p.to_byte_S(), 'out', True)
-            print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, interface))
+              
+         
+            self.intf_L[interface].put(prior, pkt.to_byte_S(), 'out', True)
+            print('%s: forwarding packet "%s" from interface %d to %d' % (self, pkt, i, interface))
         except queue.Full:
-            print('%s: packet "%s" lost on interface %d' % (self, p, i))
+            print('%s: packet "%s" lost on interface %d' % (self, pkt, i))
             pass
         
     ## forward the packet according to the routing table
