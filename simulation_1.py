@@ -60,7 +60,7 @@ if __name__ == '__main__':
     #create some send events    
     for i in range(5):
         priority = i%2
-        print(priority)
+        #print(priority)
         client.udt_send(2, 'Sample client data %d' % i, priority)
         
     #give the network sufficient time to transfer all packets before quitting

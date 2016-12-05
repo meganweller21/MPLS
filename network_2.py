@@ -166,8 +166,7 @@ class Host:
     # @param dst_addr: destination address for the packet
     # @param data_S: data being transmitted to the network layer
     # @param priority: packet priority
-    def udt_send(self, dst_addr, data_S, priority=0):
-
+    def udt_send(self, dst_addr, data_S, priority): #parameter used to be priority=0
         p = NetworkPacket(dst_addr, 'data', priority, data_S)
         print('%s: sending packet "%s"' % (self, p))
         self.intf_L[0].put(priority, p.to_byte_S(), 'out') #send packets always enqueued successfully
@@ -234,7 +233,7 @@ class Router:
                 else:
                     p = NetworkPacket.from_byte_S(pkt) #parse a packet out
                 if p.prot_S == 'data':
-                    self.forward_packet(prior, p,i)
+                    self.forward_packet(prior, p, i)
                 elif p.prot_S == 'control':
                     self.update_routes(p, i)
                 else:
@@ -248,8 +247,24 @@ class Router:
             # TODO: Here you will need to implement a lookup into the 
             # forwarding table to find the appropriate outgoing interface
             # for now we assume the outgoing interface is (i+1)%2
-            self.intf_L[(i+1)%2].put(prior, p.to_byte_S(), 'out', True)
-            print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, (i+1)%2))
+            source_host = p.data_S[11]
+            if (self.name == "A"):
+                #coming from Host 1
+                if (source_host == "1"):
+                    interface = self.forwarding_table[0][3]
+                #coming from Host 2
+                elif (source_host == "2"):
+                    interface = self.forwarding_table[2][3]
+            elif (self.name == "B"):
+                interface = self.forwarding_table[1][3]
+            elif (self.name == "C"):
+                interface = self.forwarding_table[3][3]
+            elif (self.name == "D"):
+                interface = 2
+                
+
+            self.intf_L[interface].put(prior, p.to_byte_S(), 'out', True)
+            print('%s: forwarding packet "%s" from interface %d to %d' % (self, p, i, interface))
         except queue.Full:
             print('%s: packet "%s" lost on interface %d' % (self, p, i))
             pass
@@ -272,7 +287,7 @@ class Router:
                 new_update_A = False
                 cost = self.intf_L[2].cost + int(message[5])
                 self.rt_tbl_D[3] = {2: (cost)}
-                self.send_routes(p.source)
+                self.send_routes(1)
 
         elif (self.name == "D" and new_update_D):
             #check to see if we're receiving a packet from router C
@@ -280,14 +295,14 @@ class Router:
                 new_update_D = False
                 cost = self.intf_L[1].cost + int(message[0])
                 self.rt_tbl_D[1] = {1: (cost)}
-                self.send_routes(p.source)
+                self.send_routes(3)
         
     ## send out route update
     # @param i Interface number on which to send out a routing update
     def send_routes(self, i):
         message = Message(self.rt_tbl_D)
 
-        p = NetworkPacket(0, 'control', message.to_byte_S())
+        p = NetworkPacket(0, 'control', 1, message.to_byte_S())
 
         if (self.name == "A"):
             neighbor1_intf = 2

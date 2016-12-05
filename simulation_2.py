@@ -10,7 +10,7 @@ import sys
 
 ##configuration parameters
 router_queue_size = 0 #0 means unlimited
-simulation_time = 10 #give the network sufficient time to transfer all packets before quitting
+simulation_time = 20 #give the network sufficient time to transfer all packets before quitting
 
 if __name__ == '__main__':
     object_L = [] #keeps track of objects, so we can kill their threads
@@ -32,8 +32,9 @@ if __name__ == '__main__':
     # D = 13
     #format: in_label, in_intf, out_label, out_intf
 
-    # forwarding_table = [A, 0, B, 0]     [B, 0, D, 1]   [A, 1, C, 3]    [C, 0, D, 1]
-    forwarding_table = [[[10, 0, 11, 2], [11, 0, 13, 1], [10, 1, 12, 3], [12, 0, 13, 1]]]
+    # forwarding_table = [A, 0, B, 2]     [B, 0, D, 1]   [A, 1, C, 3]    [C, 0, D, 1]
+    forwarding_table = [[10, 0, 11, 2], [11, 0, 13, 1], [10, 1, 12, 3], [12, 0, 13, 1]]
+
     router_a_rt_tbl_D = {1: {0: 1}, 2: {1: 9}}
     router_a = network_2.Router(name='A', 
                               intf_cost_L=[1,9,1,2],
@@ -87,31 +88,32 @@ if __name__ == '__main__':
     
     for t in thread_L:
         t.start()
-    
-    #router_b.send_routes(1)
-    #router_c.send_routes(3)
 
+    #send out routing information from router B and router C
+    #router_b.send_routes(1)#####put back in
+    #router_c.send_routes(3)#####put back in
+    
     #create some send events    
     for i in range(5):
         priority = i%2
-        print(priority)
-        host1.udt_send(2, 'Sample host1 data %d' % i, priority)
-        
-    #give the network sufficient time to transfer all packets before quitting
-    sleep(simulation_time)
-    '''
+        #print(priority)
+        host1.udt_send(3, 'Sample host1 data %d' % i, priority)
+    
     for i in range(5):
         priority = i%2
-        print(priority)
-        host2.udt_send(2, 'Sample host2 data %d' % i, priority)
+        #print(priority)
+        host2.udt_send(3, 'Sample host2 data %d' % (i+5), priority)
 
+    #give the network sufficient time to transfer all packets before quitting
     sleep(simulation_time)
-    '''
-    
+
+    #####put back in
     #print the final routing tables
+    """
     for obj in object_L:
         if str(type(obj)) == "<class 'network_2.Router'>":
             obj.print_routes()
+    """
     
     #join all threads
     for o in object_L:
