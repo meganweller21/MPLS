@@ -73,7 +73,7 @@ if __name__ == '__main__':
     
     #add all the links
     link_layer.add_link(link_2.Link(host1, 0, router_a, 0))
-    link_layer.add_link(link_2.Link(host1, 0, router_a, 1))
+    link_layer.add_link(link_2.Link(host2, 0, router_a, 1))
     link_layer.add_link(link_2.Link(router_a, 2, router_b, 0))
     link_layer.add_link(link_2.Link(router_a, 3, router_c, 0))
     link_layer.add_link(link_2.Link(router_b, 1, router_d, 0))
@@ -88,6 +88,9 @@ if __name__ == '__main__':
     for t in thread_L:
         t.start()
     
+    #router_b.send_routes(1)
+    #router_c.send_routes(3)
+
     #create some send events    
     for i in range(5):
         priority = i%2
@@ -107,7 +110,7 @@ if __name__ == '__main__':
     
     #print the final routing tables
     for obj in object_L:
-        if str(type(obj)) == "<class 'network.Router'>":
+        if str(type(obj)) == "<class 'network_2.Router'>":
             obj.print_routes()
     
     #join all threads

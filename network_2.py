@@ -5,6 +5,8 @@ Created on Oct 12, 2016
 import queue
 import threading
 
+new_update_A = True
+new_update_D = True
 
 ## wrapper class for a queue of packets
 class Interface:
@@ -124,12 +126,9 @@ class MPLS_frame(NetworkPacket):
 
     label_S_length = 20
     full_length = 27
-    def __init__(self, label, dst_addr, prot_S, priority, data_S):
+    def __init__(self, label, pkt):
         self.label = label
-        self.dst_addr = dst_addr
-        self.data_S = data_S
-        self.prot_S = prot_S
-        self.priority = priority
+        self.pkt = pkt
 
     # called when printing the object
     def __str__(self):
@@ -138,15 +137,7 @@ class MPLS_frame(NetworkPacket):
     ## convert packet to a byte string for transmission over links
     def to_byte_S(self):
         byte_S = str(self.label).zfill(self.label_S_length)
-        byte_S += str(self.dst_addr).zfill(self.dst_addr_S_length)
-        if self.prot_S == 'data':
-            byte_S += '1'
-        elif self.prot_S == 'control':
-            byte_S += '2'
-        else:
-            raise('%s: unknown prot_S option: %s' %(self, self.prot_S))
-        byte_S += str(self.priority)
-        byte_S += self.data_S
+        byte_S += NetworkPacket.from_byte_S()
         return byte_S
     
     ## extract a packet object from a byte string
@@ -154,17 +145,8 @@ class MPLS_frame(NetworkPacket):
     @classmethod
     def from_byte_S(self, byte_S):
         label_S = int(byte_S[0 : MPLS_frame.label_S_length])
-        dst_addr = int(byte_S[MPLS_frame.label_S_length : NetworkPacket.dst_addr_S_length])
-        prot_S = byte_S[MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length : MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length]
-        if prot_S == '1':
-            prot_S = 'data'
-        elif prot_S == '2':
-            prot_S = 'control'
-        else:
-            raise('%s: unknown prot_S field: %s' %(self, prot_S))
-        priority_S = byte_S[MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length : MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length]    
-        data_S = byte_S[MPLS_frame.label_S_length + NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length : ]        
-        return self(label, dst_addr, prot_S, priority_S, data_S)    
+        data_S = NetworkPacket.from_byte_S(byte_S[MPLS_frame.label_S_length : ])    
+        return self(label, data_S)    
 
 
 ## Implements a network host for receiving and transmitting data
@@ -278,16 +260,57 @@ class Router:
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
         print('%s: Received routing update %s from interface %d' % (self, p, i))
+
+        message = p.data_S
+
+        global new_update_A
+        global new_update_D
+
+        if (self.name == "A" and new_update_A):
+            #check to see if we're receiving a packet from router B
+            if (int(message[5]) == 5):
+                new_update_A = False
+                cost = self.intf_L[2].cost + int(message[5])
+                self.rt_tbl_D[3] = {2: (cost)}
+                self.send_routes(p.source)
+
+        elif (self.name == "D" and new_update_D):
+            #check to see if we're receiving a packet from router C
+            if (int(message[0]) == 3):
+                new_update_D = False
+                cost = self.intf_L[1].cost + int(message[0])
+                self.rt_tbl_D[1] = {1: (cost)}
+                self.send_routes(p.source)
         
     ## send out route update
     # @param i Interface number on which to send out a routing update
     def send_routes(self, i):
-        # a sample route update packet
-        p = NetworkPacket(0, 'control', 'Sample routing table packet')
+        message = Message(self.rt_tbl_D)
+
+        p = NetworkPacket(0, 'control', message.to_byte_S())
+
+        if (self.name == "A"):
+            neighbor1_intf = 2
+            neighbor2_intf = 3
+
+        elif (self.name == "B"):
+            neighbor1_intf = 0
+            neighbor2_intf = 1
+
+        elif (self.name == 'C'):
+            neighbor1_intf = 0
+            neighbor2_intf = 1
+
+        elif (self.name == 'D'):
+            neighbor1_intf = 0
+            neighbor2_intf = 1
+
         try:
-            #TODO: add logic to send out a route update
-            print('%s: sending routing update "%s" from interface %d' % (self, p, i))
-            self.intf_L[i].put(p.to_byte_S(), 'out', True)
+            self.intf_L[neighbor1_intf].put(1, p.to_byte_S(), 'out', True)
+            print('%s: sending routing update "%s" from interface %d' % (self, p, neighbor1_intf))
+
+            self.intf_L[neighbor2_intf].put(1, p.to_byte_S(), 'out', True)
+            print('%s: sending routing update "%s" from interface %d' % (self, p, neighbor2_intf))
         except queue.Full:
             print('%s: packet "%s" lost on interface %d' % (self, p, i))
             pass
@@ -295,9 +318,39 @@ class Router:
     ## Print routing table
     def print_routes(self):
         print('%s: routing table' % self)
-        #TODO: print the routes as a two dimensional table for easy inspection
-        # Currently the function just prints the route table as a dictionary
-        print(self.rt_tbl_D)
+        rt_tbl_items = self.rt_tbl_D.items()
+        rt_tbl_L = [["-", "-", "-"], ["-", "-", "-"], ["-", "-", "-"]]
+
+        for host, intf_cost in rt_tbl_items:
+            #router is utilizing 1 interface
+            if (len(intf_cost) == 1):
+                intf_cost = str(intf_cost)
+                intf = str(intf_cost[1])
+                cost = str(intf_cost[4])
+                rt_tbl_L[int(intf)][host-1] = cost
+            #router is utilizing 2 interfaces
+            elif (len(intf_cost) == 2):
+                intf_cost = str(intf_cost)
+                intf1 = str(intf_cost[1])
+                cost1 = str(intf_cost[4])
+                intf2 = str(intf_cost[7])
+                cost2 = str(intf_cost[10])
+
+                rt_tbl_L[int(intf1)][host-1] = cost1
+                rt_tbl_L[int(intf2)][host-1] = cost2
+
+        interface0 = ' '.join(rt_tbl_L[0])
+        interface1 = ' '.join(rt_tbl_L[1])
+        interface2 = ' '.join(rt_tbl_L[2])
+
+        print()
+        print("       Cost to")
+        print("       | 1 2 3")
+        print("     --+------")
+        print("     0 |", interface0)
+        print("From 1 |", interface1)
+        print("     2 |", interface2)
+        print()
         
                 
     ## thread target for the host to keep forwarding data
@@ -308,3 +361,36 @@ class Router:
             if self.stop:
                 print (threading.currentThread().getName() + ': Ending')
                 return 
+
+class Message:
+    def __init__(self, rt_tbl_D):
+        self.rt_tbl_D = rt_tbl_D
+
+    #convert routing table to a byte string for transmission over links
+    def to_byte_S(self):
+        rt_tbl_items = self.rt_tbl_D.items()
+        rt_tbl_L = [["-", "-", "-"], ["-", "-", "-"], ["-", "-", "-"]]
+
+        for host, intf_cost in rt_tbl_items:
+            #router is utilizing 1 interface
+            if (len(intf_cost) == 1):
+                intf_cost = str(intf_cost)
+                intf = str(intf_cost[1])
+                cost = str(intf_cost[4])
+                rt_tbl_L[int(intf)][host-1] = cost
+            #router is utilizing 2 interfaces
+            elif (len(intf_cost) == 2):
+                intf_cost = str(intf_cost)
+                intf1 = str(intf_cost[1])
+                cost1 = str(intf_cost[4])
+                intf2 = str(intf_cost[7])
+                cost2 = str(intf_cost[10])
+
+                rt_tbl_L[int(intf1)][host-1] = cost1
+                rt_tbl_L[int(intf2)][host-1] = cost2
+
+        interface0 = ''.join(rt_tbl_L[0])
+        interface1 = ''.join(rt_tbl_L[1])
+        interface2 = ''.join(rt_tbl_L[2])
+        byte_S = interface0 + interface1 + interface2
+        return byte_S
