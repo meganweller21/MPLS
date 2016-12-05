@@ -55,6 +55,8 @@ if __name__ == '__main__':
     for t in thread_L:
         t.start()
     
+    router_a.send_routes(1)
+
     #create some send events    
     for i in range(5):
         priority = i%2
@@ -66,7 +68,7 @@ if __name__ == '__main__':
     
     #print the final routing tables
     for obj in object_L:
-        if str(type(obj)) == "<class 'network.Router'>":
+        if str(type(obj)) == "<class 'network_1.Router'>":
             obj.print_routes()
     
     #join all threads

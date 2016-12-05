@@ -5,6 +5,7 @@ Created on Oct 12, 2016
 import queue
 import threading
 
+new_update = True
 
 ## wrapper class for a queue of packets
 class Interface:
@@ -228,17 +229,69 @@ class Router:
     def update_routes(self, p, i):
         #TODO: add logic to update the routing tables and
         # possibly send out routing updates
-        print('%s: Received routing update %s from interface %d' % (self, p, i))
+        print('%s: Received routing update %s' % (self, p))
+        message = p.data_S  #ie. B received 1---
+
+        #check to see if this is a new update
+        num_digits = 0
+        for i in range(len(message)):
+            if (message[i].isdigit()):
+                num_digits = num_digits + 1
+
+        global new_update
+        #only run update if this is the first or second message received
+        if (num_digits == 1 or (num_digits == 2 and new_update)):
+
+            if (num_digits == 2):
+                new_update = False
+
+            int_0_cost = -99
+            int_1_cost = -99
+       
+            for i in range(len(message)):
+                if (message[i].isdigit()):
+                    #there is a cost at interface 0
+                    if (i == 0):
+                        int_0_cost = int(message[i])
+                    #there is a cost at interface 1
+                    if (i == 3):
+                        int_1_cost = int(message[i])
+
+            if (self.name == "A"):
+                to_host = 2
+                cost = self.intf_L[1].cost  #router A's interface 1 cost
+            elif (self.name == "B"):
+                to_host = 1
+                cost = self.intf_L[0].cost  #router B's interface 0 cost
+
+            if (int_0_cost != -99):
+                self.rt_tbl_D[to_host] = {0: (int_0_cost + cost)}
+
+            if (int_1_cost != -99):
+                self.rt_tbl_D[to_host] = {1: (int_1_cost + cost)}
+
+            self.send_routes(0)
         
     ## send out route update
     # @param i Interface number on which to send out a routing update
     def send_routes(self, i):
         # a sample route update packet
-        p = NetworkPacket(0, 'control', 'Sample routing table packet')
+        message = Message(self.rt_tbl_D)
+        p = NetworkPacket(0, 'control', 1, message.to_byte_S())
+
+        if (self.name == "A"):
+            i = 1   #to send routing table to router B through A, must go through interface 1
+            p.dst_addr = 2  #sending to host 2
+
+        elif (self.name == "B"):
+            i = 0   #to send routing table to router A through B, must go through interface 0
+            p.dst_addr = 1  #sending to host 1
+
         try:
             #TODO: add logic to send out a route update
             print('%s: sending routing update "%s" from interface %d' % (self, p, i))
-            self.intf_L[i].put(p.to_byte_S(), 'out', True)
+            #I don't think updating have priority, auto to be 1
+            self.intf_L[i].put(1, p.to_byte_S(), 'out', True)
         except queue.Full:
             print('%s: packet "%s" lost on interface %d' % (self, p, i))
             pass
@@ -246,9 +299,37 @@ class Router:
     ## Print routing table
     def print_routes(self):
         print('%s: routing table' % self)
-        #TODO: print the routes as a two dimensional table for easy inspection
-        # Currently the function just prints the route table as a dictionary
-        print(self.rt_tbl_D)
+        rt_tbl_items = self.rt_tbl_D.items()
+        rt_tbl_L = [["-", "-"], ["-", "-"]]
+
+        for host, intf_cost in rt_tbl_items:
+            #router is utilizing 1 interface
+            if (len(intf_cost) == 1):
+                intf_cost = str(intf_cost)
+                intf = str(intf_cost[1])
+                cost = str(intf_cost[4])
+                rt_tbl_L[int(intf)][host-1] = cost
+            #router is utilizing 2 interfaces
+            elif (len(intf_cost) == 2):
+                intf_cost = str(intf_cost)
+                intf1 = str(intf_cost[1])
+                cost1 = str(intf_cost[4])
+                intf2 = str(intf_cost[7])
+                cost2 = str(intf_cost[10])
+
+                rt_tbl_L[int(intf1)][host-1] = cost1
+                rt_tbl_L[int(intf2)][host-1] = cost2
+
+        interface0 = ' '.join(rt_tbl_L[0])
+        interface1 = ' '.join(rt_tbl_L[1])
+
+        print()
+        print("       Cost to")
+        print("       | 1 2")
+        print("     --+-----")
+        print("     0 |", interface0)
+        print("From 1 |", interface1)
+        print()
         
                 
     ## thread target for the host to keep forwarding data
@@ -259,3 +340,35 @@ class Router:
             if self.stop:
                 print (threading.currentThread().getName() + ': Ending')
                 return 
+
+class Message:
+    def __init__(self, rt_tbl_D):
+        self.rt_tbl_D = rt_tbl_D
+
+    #convert routing table to a byte string for transmission over links
+    def to_byte_S(self):
+        rt_tbl_items = self.rt_tbl_D.items()
+        rt_tbl_L = [["-", "-"], ["-", "-"]]
+
+        for host, intf_cost in rt_tbl_items:
+            #router is utilizing 1 interface
+            if (len(intf_cost) == 1):
+                intf_cost = str(intf_cost)
+                intf = str(intf_cost[1])
+                cost = str(intf_cost[4])
+                rt_tbl_L[int(intf)][host-1] = cost
+            #router is utilizing 2 interfaces
+            elif (len(intf_cost) == 2):
+                intf_cost = str(intf_cost)
+                intf1 = str(intf_cost[1])
+                cost1 = str(intf_cost[4])
+                intf2 = str(intf_cost[7])
+                cost2 = str(intf_cost[10])
+
+                rt_tbl_L[int(intf1)][host-1] = cost1
+                rt_tbl_L[int(intf2)][host-1] = cost2
+
+        interface0 = ''.join(rt_tbl_L[0])
+        interface1 = ''.join(rt_tbl_L[1])
+        byte_S = interface0 + interface1
+        return byte_S
