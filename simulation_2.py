@@ -1,6 +1,7 @@
 '''
 Created on Oct 12, 2016
 @author: mwitt_000
+@modified by: Ashley Bertrand and Megan Weller
 '''
 import network_2
 import link_2
@@ -90,8 +91,8 @@ if __name__ == '__main__':
         t.start()
 
     #send out routing information from router B and router C
-    #router_b.send_routes(1)#####put back in
-    #router_c.send_routes(3)#####put back in
+    router_b.send_routes(1)
+    router_c.send_routes(3)
     
     #create some send events    
     for i in range(5):
@@ -107,13 +108,10 @@ if __name__ == '__main__':
     #give the network sufficient time to transfer all packets before quitting
     sleep(simulation_time)
 
-    #####put back in
     #print the final routing tables
-    """
     for obj in object_L:
         if str(type(obj)) == "<class 'network_2.Router'>":
             obj.print_routes()
-    """
     
     #join all threads
     for o in object_L:
@@ -122,7 +120,3 @@ if __name__ == '__main__':
         t.join()
         
     print("All simulation threads joined")
-
-
-
-# writes to host periodically

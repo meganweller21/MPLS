@@ -1,6 +1,7 @@
 '''
 Created on Oct 12, 2016
 @author: mwitt_000
+@modified by: Ashley Bertrand and Megan Weller
 '''
 
 import queue

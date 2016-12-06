@@ -1,6 +1,7 @@
 '''
 Created on Oct 12, 2016
 @author: mwitt_000
+@modified by: Ashley Bertrand and Megan Weller
 '''
 import queue
 import threading
@@ -122,6 +123,7 @@ class NetworkPacket:
         data_S = byte_S[NetworkPacket.dst_addr_S_length + NetworkPacket.prot_S_length + NetworkPacket.pror_S_length : ]        
         return self(dst_addr, prot_S, priority_S, data_S)
     
+# encapsulating a NetworkPacket
 class MPLS_frame(NetworkPacket):
 
     label_S_length = 20
@@ -250,7 +252,6 @@ class Router:
         try:
             # TODO: Here you will need to implement a lookup into the 
             # forwarding table to find the appropriate outgoing interface
-            # for now we assume the outgoing interface is (i+1)%2
             if (len(p.to_byte_S()) > 30):
                 pk = p.return_packet()
                 source_host = pk.data_S[11]
