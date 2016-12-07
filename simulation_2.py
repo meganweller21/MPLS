@@ -33,8 +33,10 @@ if __name__ == '__main__':
     # D = 13
     #format: in_label, in_intf, out_label, out_intf
 
-    # forwarding_table = [A, 0, B, 2]     [B, 0, D, 1]   [A, 1, C, 3]    [C, 0, D, 1]
-    forwarding_table = [[10, 0, 11, 2], [11, 0, 13, 1], [10, 1, 12, 3], [12, 0, 13, 1]]
+    forwarding_table_a = [['-', '0', '11', '2'], ['-', '1', '12', '3']]
+    forwarding_table_b = ['10', '0', '13', '1']
+    forwarding_table_c = ['10', '0', '13', '1']
+    forwarding_table_d = [['11', '0', '-', '2'], ['12', '1', '-', '2']]
 
     router_a_rt_tbl_D = {1: {0: 1}, 2: {1: 9}}
     router_a = network_2.Router(name='A', 
@@ -42,7 +44,7 @@ if __name__ == '__main__':
                               intf_capacity_L=[500,500,500,500],
                               rt_tbl_D = router_a_rt_tbl_D, 
                               max_queue_size=router_queue_size,
-                              forwarding_table = forwarding_table)
+                              forwarding_table = forwarding_table_a)
     object_L.append(router_a)
     router_b_rt_tbl_D = {1: {0: 2}, 3: {1: 5}}
     router_b = network_2.Router(name='B', 
@@ -50,7 +52,7 @@ if __name__ == '__main__':
                               intf_capacity_L=[500,100],
                               rt_tbl_D = router_b_rt_tbl_D, 
                               max_queue_size=router_queue_size,
-                              forwarding_table = forwarding_table)
+                              forwarding_table = forwarding_table_b)
     object_L.append(router_b)
     router_c_rt_tbl_D = {1: {0: 3}, 3: {1: 4}}
     router_c = network_2.Router(name='C', 
@@ -58,7 +60,7 @@ if __name__ == '__main__':
                               intf_capacity_L=[500,500], #I made this up
                               rt_tbl_D = router_c_rt_tbl_D, 
                               max_queue_size=router_queue_size,
-                              forwarding_table = forwarding_table)
+                              forwarding_table = forwarding_table_c)
     object_L.append(router_c)
     router_d_rt_tbl_D = {3: {2: 3}}
     router_d = network_2.Router(name='D', 
@@ -66,7 +68,7 @@ if __name__ == '__main__':
                               rt_tbl_D = router_d_rt_tbl_D, 
                               intf_capacity_L=[500,300,500], #I made this up
                               max_queue_size=router_queue_size,
-                              forwarding_table = forwarding_table)
+                              forwarding_table = forwarding_table_d)
     object_L.append(router_d)
     
     #create a Link Layer to keep track of links between network nodes
