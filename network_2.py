@@ -252,62 +252,64 @@ class Router:
         try:
             # TODO: Here you will need to implement a lookup into the 
             # forwarding table to find the appropriate outgoing interface
+            interface = 0
+            pkt = MPLS_frame(0,p)
             if (len(p.to_byte_S()) > 30):
                 pk = p.return_packet()
                 source_host = pk.data_S[11]
-
+             
                 #A, coming from Host 1
-                if (source_host == "1"):
-                    if (self.name == "A"):
-                        pkt = MPLS_frame(int(self.forwarding_table[0][0]), p) #not sure what this line should be
+                if(self.name == 'A'):
+                    if (source_host == "1"):
+                        pkt = MPLS_frame(int(self.forwarding_table[0][2]), p) 
                         interface = self.forwarding_table[0][3]
                 #A, coming from Host 2
-                elif (source_host == "2"):
-                    if (self.name == "A"):
-                        pkt = MPLS_frame(int(self.forwarding_table[2][0]), p) #not sure what this line should be
+                    elif (source_host == "2"):
+                        pkt = MPLS_frame(int(self.forwarding_table[1][2]), p) 
                         interface = self.forwarding_table[1][3]
                 #B
-                elif (pk.label == 11):
-                    pkt = MPLS_frame(int(self.forwarding_table[1][0]), p.return_packet()) #not sure what this line should be
+                elif (p.label == 11):
+                    pkt = MPLS_frame(int(self.forwarding_table[2]), p.return_packet())
                     interface = self.forwarding_table[3]
                 #C
-                elif (pk.label == 12):
-                    pkt = MPLS_frame(int(self.forwarding_table[3][0]), p.return_packet()) #not sure what this line should be
+                elif (p.label == 12):
+                    pkt = MPLS_frame(int(self.forwarding_table[2]), p.return_packet()) 
                     interface = self.forwarding_table[3]
                 #D
-                elif (pk.label == 13):
+                elif (p.label == 13):
                     if (source_host == "1"):
-                        pkt = p.return_packet() #not sure what this line should be
+                        pkt = p.return_packet() 
                         interface = self.forwarding_table[0][3]
                     elif (source_host == "2"):
-                        pkt = p.return_packet() #not sure what this line should be
+                        pkt = p.return_packet() 
                         interface = self.forwarding_table[1][3]
+
             else:
                 source_host = p.data_S[11]
 
                 if (self.name == "A"):
                     #coming from Host 1
                     if (source_host == "1"):
-                        pkt = MPLS_frame(int(self.forwarding_table[0][0]), p) #not sure what this line should be
+                        pkt = MPLS_frame(int(self.forwarding_table[0][2]), p) 
                         interface = self.forwarding_table[0][3]
                     #coming from Host 2
                     elif (source_host == "2"):
-                        pkt = MPLS_frame(int(self.forwarding_table[2][0]), p) #not sure what this line should be
+                        pkt = MPLS_frame(int(self.forwarding_table[1][2]), p) 
                         interface = self.forwarding_table[1][3]
                 elif (self.name == "B"):
-                    pkt = MPLS_frame(int(self.forwarding_table[1][0]), p.return_packet()) #not sure what this line should be
+                    pkt = MPLS_frame(int(self.forwarding_table[2]), p.return_packet()) 
                     interface = self.forwarding_table[3]
                 elif (self.name == "C"):
-                    pkt = MPLS_frame(int(self.forwarding_table[3][0]), p.return_packet()) #not sure what this line should be
+                    pkt = MPLS_frame(int(self.forwarding_table[2]), p.return_packet()) 
                     interface = self.forwarding_table[3]
                 elif (self.name == "D"):
                     if (source_host == "1"):
-                        pkt = p.return_packet() #not sure what this line should be
+                        pkt = p.return_packet() 
                         interface = self.forwarding_table[0][3]
                     elif (source_host == "2"):
-                        pkt = p.return_packet() #not sure what this line should be
+                        pkt = p.return_packet() 
                         interface = self.forwarding_table[1][3]
-         
+            
             self.intf_L[int(interface)].put(prior, pkt.to_byte_S(), 'out', True)
             print('%s: forwarding packet "%s" from interface %d to %d' % (self, pkt, i, int(interface)))
         except queue.Full:
