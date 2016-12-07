@@ -252,8 +252,7 @@ class Router:
         try:
             # TODO: Here you will need to implement a lookup into the 
             # forwarding table to find the appropriate outgoing interface
-            interface = 0
-            pkt = MPLS_frame(0,p)
+            
             if (len(p.to_byte_S()) > 30):
                 pk = p.return_packet()
                 source_host = pk.data_S[11]
